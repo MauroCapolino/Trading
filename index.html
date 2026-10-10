@@ -1,0 +1,53 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Gamma — Summary</title>
+<style>
+body{margin:0;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#fff;color:#1d1f23}
+form{display:flex;flex-direction:column;gap:10px;width:min(320px,90vw)}
+input[type=password]{padding:10px;border-radius:8px;border:1px solid #c9ced6;background:#fff;color:inherit;font-size:16px}
+button{padding:10px;border-radius:8px;border:0;background:#2f6db5;color:#fff;font-size:16px}
+label{font-size:13px;color:#5f6670} #e{color:#e5484d;font-size:13px;min-height:1em}
+</style></head><body>
+<form id="f" hidden><b>Gamma — Summary</b>
+<input id="p" type="password" autocomplete="current-password" placeholder="Password">
+<label><input id="r" type="checkbox" checked> Remember on this device</label>
+<button>Open</button><div id="e"></div></form><div id="w">Loading…</div>
+<script>
+const S="2nEoj4w+q8w/FeVAe8WTcw==",N=600000,K="gamma-live-key",ENC="index.html.enc";
+const u=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const b64=a=>btoa(String.fromCharCode(...a));
+let DATA=null;
+async function data(){
+  if(!DATA){const r=await fetch(ENC+"?t="+Date.now(),{cache:"no-store"});
+    if(!r.ok) throw new Error("fetch "+r.status); DATA=new Uint8Array(await r.arrayBuffer());}
+  return DATA;
+}
+async function decrypt(raw){
+  const b=await data();
+  const k=await crypto.subtle.importKey("raw",raw,"AES-GCM",false,["decrypt"]);
+  return crypto.subtle.decrypt({name:"AES-GCM",iv:b.slice(0,12)},k,b.slice(12));
+}
+function show(pt,raw){
+  try{sessionStorage.setItem(K,b64(raw))}catch(_){}
+  document.open();document.write(new TextDecoder().decode(pt));document.close();
+}
+async function derive(pw){
+  const b=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:u(S),iterations:N},b,256));
+}
+(async()=>{
+  const s=localStorage.getItem(K)||sessionStorage.getItem(K);
+  if(s){try{const raw=u(s);show(await decrypt(raw),raw);return}catch(e){
+    if(String(e).indexOf("fetch")>=0){document.getElementById("w").textContent="Could not load the page ("+e.message+"). Refresh to retry.";return}
+    localStorage.removeItem(K);sessionStorage.removeItem(K)}}
+  document.getElementById("w").hidden=true;document.getElementById("f").hidden=false;document.getElementById("p").focus();
+})();
+document.getElementById("f").onsubmit=async ev=>{ev.preventDefault();
+  const e=document.getElementById("e");e.textContent="Checking…";
+  const keep=document.getElementById("r").checked;
+  let raw,pt;
+  try{raw=await derive(document.getElementById("p").value);pt=await decrypt(raw)}
+  catch(err){e.textContent=String(err).indexOf("fetch")>=0?"Could not load the page, try again":"Wrong password";return}
+  if(keep){try{localStorage.setItem(K,b64(raw))}catch(_){}}
+  show(pt,raw)};
+</script></body></html>
